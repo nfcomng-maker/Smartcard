@@ -8,11 +8,12 @@ import { Contact } from "./pages/Contact";
 import { UserPage } from "./pages/UserPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { Login } from "./pages/Login";
+import { Signup } from "./pages/Signup";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { Shop } from "./pages/Shop";
 import { CartProvider } from "./context/CartContext";
-
+import { AIChatbot } from "./components/AIChatbot";
 import { Privacy } from "./pages/Privacy";
 import { Terms } from "./pages/Terms";
 
@@ -126,8 +127,10 @@ export default function App() {
 
             {/* Admin Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/admin" element={<AdminDashboard />} />
           </Routes>
+          <AIChatbot />
         </div>
       </Router>
       </CartProvider>

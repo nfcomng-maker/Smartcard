@@ -37,7 +37,7 @@ export function Navbar() {
                 {link.name}
               </Link>
             ))}
-            <Link to="/login" className="btn-primary py-2 px-6 text-sm">
+            <Link to="/signup" className="btn-primary py-2 px-6 text-sm">
               Get Started
             </Link>
           </div>
@@ -75,7 +75,7 @@ export function Navbar() {
                 </Link>
               ))}
               <Link
-                to="/login"
+                to="/signup"
                 onClick={() => setIsOpen(false)}
                 className="block w-full text-center btn-primary mt-4"
               >

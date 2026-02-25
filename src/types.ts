@@ -41,7 +41,9 @@ export interface Profile {
   name: string;
   bio: string;
   avatar_url: string;
+  background_image_url?: string;
   theme: string;
+  custom_css?: string;
   background_video_url?: string;
   music_embed_url?: string;
   enable_contact_form: number;
@@ -50,4 +52,6 @@ export interface Profile {
 export interface User {
   id: number;
   username: string;
+  role?: string;
+  created_at?: string;
 }

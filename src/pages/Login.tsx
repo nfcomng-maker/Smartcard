@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Smartphone, Lock, User, Chrome, Facebook } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -146,7 +146,7 @@ export function Login() {
 
         <div className="mt-8 pt-8 border-t border-white/5 text-center">
           <p className="text-xs text-light/40">
-            Don't have an account? <span className="text-gold cursor-pointer">Contact Support</span>
+            Don't have an account? <Link to="/signup" className="text-gold">Sign Up</Link>
           </p>
         </div>
       </motion.div>

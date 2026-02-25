@@ -8,7 +8,14 @@ import { Resend } from "resend";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("smartcard.db");
+let db: Database.Database;
+try {
+  db = new Database("smartcard.db");
+} catch (error) {
+  console.error("Failed to open database:", error);
+  // Fallback to in-memory if file fails
+  db = new Database(":memory:");
+}
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // Initialize Database
@@ -65,6 +72,7 @@ db.exec(`
     name TEXT,
     bio TEXT,
     avatar_url TEXT,
+    background_image_url TEXT,
     theme TEXT DEFAULT 'default',
     custom_css TEXT,
     background_video_url TEXT,
@@ -153,7 +161,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   // API Routes
   app.get("/api/site-settings", (req, res) => {
@@ -238,6 +250,30 @@ async function startServer() {
     );
 
     res.json({ profile, links });
+  });
+
+  app.post("/api/signup", (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: "Username and password are required" });
+    }
+
+    try {
+      const result = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)")
+        .run(username, password, 'user');
+      
+      // Create initial profile
+      db.prepare("INSERT INTO profile (user_id, name, bio) VALUES (?, ?, ?)")
+        .run(result.lastInsertRowid, username, `Hi, I'm ${username}!`);
+        
+      res.json({ success: true, user: { id: result.lastInsertRowid, username } });
+    } catch (error: any) {
+      if (error.message.includes("UNIQUE constraint failed")) {
+        res.status(400).json({ error: "Username already exists" });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
   });
 
   app.post("/api/login", (req, res) => {
@@ -343,6 +379,20 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post("/api/admin/links/reorder", (req, res) => {
+    const { links } = req.body; // Array of { id, order_index }
+    const updateOrder = db.prepare("UPDATE links SET order_index = ? WHERE id = ?");
+    
+    const transaction = db.transaction((linksToUpdate) => {
+      for (const link of linksToUpdate) {
+        updateOrder.run(link.order_index, link.id);
+      }
+    });
+
+    transaction(links);
+    res.json({ success: true });
+  });
+
   app.get("/api/admin/analytics/:userId", (req, res) => {
     const views = db.prepare("SELECT COUNT(*) as count FROM analytics WHERE user_id = ? AND event_type = 'view'").get(req.params.userId) as { count: number };
     const clicks = db.prepare("SELECT COUNT(*) as count FROM analytics WHERE user_id = ? AND event_type = 'click'").get(req.params.userId) as { count: number };
@@ -352,9 +402,9 @@ async function startServer() {
   });
 
   app.post("/api/admin/profile", (req, res) => {
-    const { user_id, name, bio, theme, avatar_url, background_video_url, music_embed_url, enable_contact_form } = req.body;
-    db.prepare("UPDATE profile SET name = ?, bio = ?, theme = ?, avatar_url = ?, background_video_url = ?, music_embed_url = ?, enable_contact_form = ? WHERE user_id = ?")
-      .run(name, bio, theme, avatar_url, background_video_url, music_embed_url, enable_contact_form, user_id);
+    const { user_id, name, bio, theme, avatar_url, background_image_url, custom_css, background_video_url, music_embed_url, enable_contact_form } = req.body;
+    db.prepare("UPDATE profile SET name = ?, bio = ?, theme = ?, avatar_url = ?, background_image_url = ?, custom_css = ?, background_video_url = ?, music_embed_url = ?, enable_contact_form = ? WHERE user_id = ?")
+      .run(name, bio, theme, avatar_url, background_image_url, custom_css, background_video_url, music_embed_url, enable_contact_form, user_id);
     res.json({ success: true });
   });
 

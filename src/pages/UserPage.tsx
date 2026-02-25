@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   ExternalLink, Globe, Instagram, Twitter, Linkedin, Github, Youtube, 
   Send, Music, Share2, Facebook, MessageCircle, Copy, Check, X,
-  ChevronLeft, ChevronRight, ShoppingBag
+  ChevronLeft, ChevronRight, ShoppingBag, Mail, Phone, Camera,
+  MapPin, Briefcase, Video
 } from "lucide-react";
 import { Link, Profile, Product } from "../types";
 import { cn } from "../lib/utils";
@@ -13,9 +14,19 @@ const iconMap: Record<string, any> = {
   Globe,
   Instagram,
   Twitter,
+  Facebook,
   Linkedin,
   Github,
   Youtube,
+  Mail,
+  Phone,
+  MessageCircle,
+  Music,
+  ShoppingBag,
+  Video,
+  Camera,
+  MapPin,
+  Briefcase,
 };
 
 export function UserPage() {
@@ -133,6 +144,23 @@ export function UserPage() {
 
   return (
     <div className={cn("min-h-screen py-20 px-4 relative overflow-hidden", themes[profile.theme] || themes.default)}>
+      {/* Custom CSS */}
+      {profile.custom_css && (
+        <style dangerouslySetInnerHTML={{ __html: profile.custom_css }} />
+      )}
+
+      {/* Background Image */}
+      {(profile as any).background_image_url && !profile.background_video_url && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <img 
+            src={(profile as any).background_image_url} 
+            className="w-full h-full object-cover opacity-30" 
+            alt="Background"
+          />
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
+      )}
+
       {/* Background Video */}
       {profile.background_video_url && (
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -204,7 +232,9 @@ export function UserPage() {
         {/* Links List */}
         <div className="space-y-4 mb-12">
           {links.map((link, index) => {
-            const Icon = iconMap[link.icon] || Globe;
+            const isCustomIcon = link.icon?.startsWith('data:image');
+            const Icon = !isCustomIcon ? (iconMap[link.icon] || Globe) : null;
+            
             return (
               <motion.div
                 key={link.id}
@@ -224,8 +254,12 @@ export function UserPage() {
                       : "bg-white/5 border-white/10 hover:bg-white/10"
                   )}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center text-gold mr-4">
-                    <Icon size={20} />
+                  <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center text-gold mr-4 overflow-hidden">
+                    {isCustomIcon ? (
+                      <img src={link.icon} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      Icon && <Icon size={20} />
+                    )}
                   </div>
                   <span className="flex-grow text-left font-medium">{link.title}</span>
                   <ExternalLink size={16} className="opacity-0 group-hover:opacity-40 transition-opacity" />
