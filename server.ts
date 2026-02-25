@@ -16,9 +16,38 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
-    password TEXT
+    password TEXT,
+    role TEXT DEFAULT 'user', -- 'admin' or 'user'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    description TEXT,
+    price REAL,
+    image_url TEXT,
+    category TEXT,
+    stock INTEGER DEFAULT 100
+  );
+
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    total_amount REAL,
+    status TEXT DEFAULT 'pending', -- 'pending', 'paid', 'shipped'
+    items TEXT, -- JSON string of items
+    customer_details TEXT, -- JSON string
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+
+  -- Existing tables...
   CREATE TABLE IF NOT EXISTS links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
@@ -78,9 +107,9 @@ db.exec(`
 `);
 
 // Seed initial data if empty
-const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
-if (userCount.count === 0) {
-  db.prepare("INSERT INTO users (username, password) VALUES (?, ?)").run("admin", "password123");
+const userCountResult = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+if (userCountResult.count === 0) {
+  db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run("admin", "password123", "admin");
   db.prepare("INSERT INTO profile (user_id, name, bio, theme) VALUES (?, ?, ?, ?)").run(1, "SMARTCARD", "Your NFC Business Page", "gold");
   db.prepare("INSERT INTO links (user_id, title, url, icon) VALUES (?, ?, ?, ?)").run(1, "Website", "https://example.com", "Globe");
   db.prepare("INSERT INTO links (user_id, title, url, icon) VALUES (?, ?, ?, ?)").run(1, "Instagram", "https://instagram.com", "Instagram");
@@ -96,6 +125,30 @@ if (userCount.count === 0) {
   );
 }
 
+const productsCount = db.prepare("SELECT COUNT(*) as count FROM products").get() as { count: number };
+if (productsCount.count === 0) {
+  const initialProducts = [
+    { name: "SmartCard Pro (Gold)", price: 15000, category: "NFC Card", image: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&w=800&q=80" },
+    { name: "SmartCard Matte Black", price: 12000, category: "NFC Card", image: "https://images.unsplash.com/photo-1621416848440-236914c7447d?auto=format&fit=crop&w=800&q=80" },
+    { name: "SmartCard Bamboo", price: 18000, category: "NFC Card", image: "https://images.unsplash.com/photo-1586717791821-3f44a563dc4c?auto=format&fit=crop&w=800&q=80" },
+    { name: "NFC Phone Tag", price: 5000, category: "Accessory", image: "https://images.unsplash.com/photo-1556742044-3c52d6e88c62?auto=format&fit=crop&w=800&q=80" }
+  ];
+  const insertProduct = db.prepare("INSERT INTO products (name, price, category, image_url, description) VALUES (?, ?, ?, ?, ?)");
+  initialProducts.forEach(p => insertProduct.run(p.name, p.price, p.category, p.image, `High-quality ${p.name} for seamless networking.`));
+}
+
+const settingsCount = db.prepare("SELECT COUNT(*) as count FROM site_settings").get() as { count: number };
+if (settingsCount.count === 0) {
+  const defaultSettings = [
+    { key: "hero_title", value: "The Future of Networking is Here" },
+    { key: "hero_subtitle", value: "Create your digital business card in seconds and share it with a tap." },
+    { key: "contact_email", value: "support@smartcard.ng" },
+    { key: "currency_symbol", value: "₦" }
+  ];
+  const insertSetting = db.prepare("INSERT INTO site_settings (key, value) VALUES (?, ?)");
+  defaultSettings.forEach(s => insertSetting.run(s.key, s.value));
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -103,6 +156,68 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
+  app.get("/api/site-settings", (req, res) => {
+    const settings = db.prepare("SELECT * FROM site_settings").all() as any[];
+    const settingsMap = settings.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
+    res.json(settingsMap);
+  });
+
+  app.post("/api/admin/site-settings", (req, res) => {
+    const updates = req.body;
+    const updateSetting = db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)");
+    Object.entries(updates).forEach(([key, value]) => {
+      updateSetting.run(key, String(value));
+    });
+    res.json({ success: true });
+  });
+
+  app.get("/api/products", (req, res) => {
+    const products = db.prepare("SELECT * FROM products").all();
+    res.json(products);
+  });
+
+  app.post("/api/checkout", (req, res) => {
+    const { user_id, items, total_amount, customer_details } = req.body;
+    const result = db.prepare("INSERT INTO orders (user_id, items, total_amount, customer_details) VALUES (?, ?, ?, ?)")
+      .run(user_id || null, JSON.stringify(items), total_amount, JSON.stringify(customer_details));
+    res.json({ success: true, orderId: result.lastInsertRowid });
+  });
+
+  app.get("/api/admin/users", (req, res) => {
+    const users = db.prepare("SELECT id, username, role, created_at FROM users").all();
+    res.json(users);
+  });
+
+  app.post("/api/admin/users", (req, res) => {
+    const { username, password, role } = req.body;
+    try {
+      const result = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)")
+        .run(username, password || 'password123', role || 'user');
+      
+      // Create initial profile
+      db.prepare("INSERT INTO profile (user_id, name, bio) VALUES (?, ?, ?)")
+        .run(result.lastInsertRowid, username, `Hi, I'm ${username}!`);
+        
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/admin/stats", (req, res) => {
+    const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+    const orderCount = db.prepare("SELECT COUNT(*) as count FROM orders").get() as { count: number };
+    const totalRevenue = db.prepare("SELECT SUM(total_amount) as total FROM orders").get() as { total: number };
+    const recentOrders = db.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 5").all();
+    
+    res.json({
+      userCount: userCount.count,
+      orderCount: orderCount.count,
+      totalRevenue: totalRevenue.total || 0,
+      recentOrders
+    });
+  });
+
   app.get("/api/profile/:username", (req, res) => {
     const { username } = req.params;
     const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username) as { id: number } | undefined;

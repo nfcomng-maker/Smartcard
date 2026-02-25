@@ -1,10 +1,22 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Smartphone, Zap, Shield, Globe, ArrowRight } from "lucide-react";
+import { Smartphone, Zap, Shield, Globe, ArrowRight, ShoppingBag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { TestimonialSlider } from "../components/TestimonialSlider";
+import { SiteSettings } from "../types";
 
 export function Home() {
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+
+  useEffect(() => {
+    fetch("/api/site-settings")
+      .then(res => res.json())
+      .then(setSettings);
+  }, []);
+
+  if (!settings) return null;
+
   return (
     <>
       <Helmet>
@@ -29,46 +41,31 @@ export function Home() {
               Next-Gen Networking
             </span>
             <h1 className="text-5xl md:text-8xl font-display font-bold mb-8 leading-[0.9] tracking-tighter">
-              The Last Business <br />
-              <span className="text-gold">Card You'll Ever Need.</span>
+              {settings.hero_title}
             </h1>
             <p className="text-lg md:text-2xl text-light/60 max-w-3xl mx-auto mb-12 leading-relaxed">
-              SMARTCARD combines premium NFC hardware with a powerful digital landing page to help you close deals, grow your following, and network like a pro—all with a single tap.
+              {settings.hero_subtitle}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16">
-              <Link to="/login" className="btn-primary w-full sm:w-auto px-12 py-5 text-lg">
-                Create Your Free Page
+              <Link to="/login" className="btn-primary w-full sm:w-auto px-12 py-5 text-lg flex items-center justify-center space-x-2">
+                <span>Create Your Page</span>
+                <ArrowRight size={20} />
               </Link>
-              <Link to="/services" className="btn-secondary w-full sm:w-auto px-12 py-5 text-lg">
-                Explore NFC Cards
+              <Link to="/shop" className="btn-secondary w-full sm:w-auto px-12 py-5 text-lg flex items-center justify-center space-x-2">
+                <ShoppingBag size={20} />
+                <span>Shop NFC Cards</span>
               </Link>
             </div>
 
             {/* Social Proof / Trusted By */}
             <div className="pt-8 border-t border-white/5 max-w-2xl mx-auto">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-light/30 font-bold mb-6">Trusted by industry leaders at</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-light/30 font-bold mb-6">Trusted by industry leaders in Nigeria</p>
               <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-30 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="font-display font-black text-xl italic">TECHFLOW</span>
                 <span className="font-display font-black text-xl italic">NEXUS</span>
                 <span className="font-display font-black text-xl italic">VANTAGE</span>
                 <span className="font-display font-black text-xl italic">ORBIT</span>
               </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
-            className="mt-20 relative max-w-4xl mx-auto"
-          >
-            <div className="glass rounded-2xl p-4 shadow-2xl">
-              <img
-                src="https://picsum.photos/seed/smartcard/1200/800"
-                alt="Dashboard Preview"
-                className="rounded-xl w-full h-auto"
-                referrerPolicy="no-referrer"
-              />
             </div>
           </motion.div>
         </div>
@@ -119,42 +116,6 @@ export function Home() {
                 </p>
               </motion.div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl font-bold mb-8">Trusted by 10,000+ Professionals</h2>
-              <p className="text-light/60 mb-8">
-                "SMARTCARD has completely changed how I network at conferences. No more paper cards, just one tap and they have everything they need."
-              </p>
-              <div className="flex items-center space-x-4">
-                <img
-                  src="https://picsum.photos/seed/user1/100/100"
-                  alt="User"
-                  className="w-12 h-12 rounded-full"
-                  referrerPolicy="no-referrer"
-                />
-                <div>
-                  <p className="font-bold">Sarah Jenkins</p>
-                  <p className="text-xs text-gold">Founder @ TechFlow</p>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <img src="https://picsum.photos/seed/p1/400/500" className="rounded-2xl" referrerPolicy="no-referrer" />
-                <img src="https://picsum.photos/seed/p2/400/300" className="rounded-2xl" referrerPolicy="no-referrer" />
-              </div>
-              <div className="space-y-4 pt-8">
-                <img src="https://picsum.photos/seed/p3/400/300" className="rounded-2xl" referrerPolicy="no-referrer" />
-                <img src="https://picsum.photos/seed/p4/400/500" className="rounded-2xl" referrerPolicy="no-referrer" />
-              </div>
-            </div>
           </div>
         </div>
       </section>

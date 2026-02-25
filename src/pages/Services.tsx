@@ -7,13 +7,13 @@ export function Services() {
       icon: <CreditCard className="w-8 h-8" />,
       title: "NFC Smart Cards",
       desc: "Premium physical cards made from metal, wood, or recycled plastic with embedded NTAG213 chips.",
-      price: "Starting at $29"
+      price: "Starting at ₦12,000"
     },
     {
       icon: <Smartphone className="w-8 h-8" />,
       title: "Digital Landing Pages",
       desc: "Fully customizable, high-converting landing pages for your professional profile and social links.",
-      price: "Free / $5 mo"
+      price: "Free / ₦2,500 mo"
     },
     {
       icon: <BarChart3 className="w-8 h-8" />,

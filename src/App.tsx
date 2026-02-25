@@ -10,6 +10,8 @@ import { AdminDashboard } from "./pages/AdminDashboard";
 import { Login } from "./pages/Login";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { Shop } from "./pages/Shop";
+import { CartProvider } from "./context/CartContext";
 
 import { Privacy } from "./pages/Privacy";
 import { Terms } from "./pages/Terms";
@@ -17,7 +19,8 @@ import { Terms } from "./pages/Terms";
 export default function App() {
   return (
     <HelmetProvider>
-      <Router>
+      <CartProvider>
+        <Router>
         <div className="min-h-screen flex flex-col">
           <Routes>
             {/* Public Landing Pages */}
@@ -105,6 +108,18 @@ export default function App() {
                 </>
               }
             />
+            <Route
+              path="/shop"
+              element={
+                <>
+                  <Navbar />
+                  <main className="flex-grow">
+                    <Shop />
+                  </main>
+                  <Footer />
+                </>
+              }
+            />
 
             {/* User Linktree Pages */}
             <Route path="/u/:username" element={<UserPage />} />
@@ -115,6 +130,7 @@ export default function App() {
           </Routes>
         </div>
       </Router>
+      </CartProvider>
     </HelmetProvider>
   );
 }
