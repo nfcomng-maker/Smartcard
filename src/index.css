@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  
+  --color-gold: #D4A017;
+  --color-dark: #121212;
+  --color-light: #E0E0E0;
+}
+
+@layer base {
+  body {
+    @apply bg-dark text-light font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+  }
+}
+
+@utility glass {
+  @apply bg-white/5 backdrop-blur-lg border border-white/10;
+}
+
+@utility gold-gradient {
+  background: linear-gradient(135deg, #D4A017 0%, #F5D76E 100%);
+}
+
+@utility btn-primary {
+  @apply gold-gradient text-dark font-bold py-3 px-8 rounded-full transition-all hover:scale-105 active:scale-95 shadow-lg shadow-gold/20;
+}
+
+@utility btn-secondary {
+  @apply border-2 border-gold text-gold font-bold py-3 px-8 rounded-full transition-all hover:bg-gold hover:text-dark active:scale-95;
+}
+
