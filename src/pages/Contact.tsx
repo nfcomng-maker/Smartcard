@@ -2,7 +2,7 @@ import { useState, FormEvent } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Send } from "lucide-react";
 import { Helmet } from "react-helmet-async";
-import HCaptcha from "react-hcaptcha";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 export function Contact() {
   const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
