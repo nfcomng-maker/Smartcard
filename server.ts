@@ -104,6 +104,42 @@ db.exec(`
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS user_assets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    type TEXT, -- 'cv', 'document', 'picture', 'music'
+    title TEXT,
+    url TEXT,
+    file_size INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS portfolio (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    title TEXT,
+    description TEXT,
+    image_url TEXT,
+    link_url TEXT,
+    order_index INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS appointments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    title TEXT,
+    description TEXT,
+    date TEXT,
+    time TEXT,
+    duration INTEGER,
+    status TEXT DEFAULT 'available',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS blog_posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT,
@@ -468,6 +504,58 @@ export async function startServer() {
   app.get("/api/admin/leads/:userId", (req, res) => {
     const leads = db.prepare("SELECT * FROM leads WHERE user_id = ? ORDER BY timestamp DESC").all(req.params.userId);
     res.json(leads);
+  });
+
+  // New Asset/Portfolio/Appointment Routes
+  app.get("/api/assets/:userId", (req, res) => {
+    const assets = db.prepare("SELECT * FROM user_assets WHERE user_id = ? ORDER BY created_at DESC").all(req.params.userId);
+    res.json(assets);
+  });
+
+  app.post("/api/assets", (req, res) => {
+    const { user_id, type, title, url, file_size } = req.body;
+    db.prepare("INSERT INTO user_assets (user_id, type, title, url, file_size) VALUES (?, ?, ?, ?, ?)")
+      .run(user_id, type, title, url, file_size || 0);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/assets/:id", (req, res) => {
+    db.prepare("DELETE FROM user_assets WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/portfolio/:userId", (req, res) => {
+    const items = db.prepare("SELECT * FROM portfolio WHERE user_id = ? ORDER BY order_index ASC").all(req.params.userId);
+    res.json(items);
+  });
+
+  app.post("/api/portfolio", (req, res) => {
+    const { user_id, title, description, image_url, link_url } = req.body;
+    db.prepare("INSERT INTO portfolio (user_id, title, description, image_url, link_url) VALUES (?, ?, ?, ?, ?)")
+      .run(user_id, title, description, image_url, link_url);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/portfolio/:id", (req, res) => {
+    db.prepare("DELETE FROM portfolio WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/appointments/:userId", (req, res) => {
+    const appointments = db.prepare("SELECT * FROM appointments WHERE user_id = ? ORDER BY date ASC, time ASC").all(req.params.userId);
+    res.json(appointments);
+  });
+
+  app.post("/api/appointments", (req, res) => {
+    const { user_id, title, description, date, time, duration } = req.body;
+    db.prepare("INSERT INTO appointments (user_id, title, description, date, time, duration) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(user_id, title, description, date, time, duration);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/appointments/:id", (req, res) => {
+    db.prepare("DELETE FROM appointments WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
   });
 
   app.post("/api/profile/:username/lead", (req, res) => {

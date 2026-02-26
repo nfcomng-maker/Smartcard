@@ -7,7 +7,8 @@ import {
   TrendingUp, Clock, Package, UserPlus, Zap, ExternalLink, Copy, Check,
   Image as ImageIcon, Upload, Code, Menu, X, ChevronRight, Bell,
   Instagram, Twitter, Facebook, Linkedin, Github, Youtube, Mail, Phone,
-  MessageCircle, Camera, MapPin, Briefcase, Search, ArrowLeft
+  MessageCircle, Camera, MapPin, Briefcase, Search, ArrowLeft,
+  FolderOpen, Calendar, FileText, File, Image, Music
 } from "lucide-react";
 import { Link, User, Profile, SiteSettings, Product, Order } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,7 +33,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type TabType = "links" | "appearance" | "analytics" | "qrcode" | "leads" | "users" | "shop" | "settings";
+type TabType = "links" | "appearance" | "analytics" | "qrcode" | "leads" | "users" | "shop" | "settings" | "portfolio" | "assets" | "appointments";
 
 const SortableLinkItem = ({ 
   link, 
@@ -99,6 +100,9 @@ export function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [portfolio, setPortfolioItems] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
   
   const [newLink, setNewLink] = useState({ title: "", url: "", icon: "Globe" });
   const [iconSearch, setIconSearch] = useState("");
@@ -223,12 +227,18 @@ export function AdminDashboard() {
       fetchProfile(managingUser.username);
       fetchAnalytics(managingUser.id);
       fetchLeads(managingUser.id);
+      fetchPortfolio(managingUser.id);
+      fetchAssets(managingUser.id);
+      fetchAppointments(managingUser.id);
       setActiveTab("links");
     } else if (user) {
       fetchLinks(user.id);
       fetchProfile(user.username);
       fetchAnalytics(user.id);
       fetchLeads(user.id);
+      fetchPortfolio(user.id);
+      fetchAssets(user.id);
+      fetchAppointments(user.id);
     }
   }, [managingUser]);
 
@@ -254,6 +264,24 @@ export function AdminDashboard() {
     const res = await fetch(`/api/admin/leads/${userId}`);
     const data = await res.json();
     setLeads(data);
+  };
+
+  const fetchPortfolio = async (userId: number) => {
+    const res = await fetch(`/api/portfolio/${userId}`);
+    const data = await res.json();
+    setPortfolioItems(data);
+  };
+
+  const fetchAssets = async (userId: number) => {
+    const res = await fetch(`/api/assets/${userId}`);
+    const data = await res.json();
+    setAssets(data);
+  };
+
+  const fetchAppointments = async (userId: number) => {
+    const res = await fetch(`/api/appointments/${userId}`);
+    const data = await res.json();
+    setAppointments(data);
   };
 
   const fetchUsers = async () => {
@@ -364,6 +392,105 @@ export function AdminDashboard() {
     alert("Profile updated!");
   };
 
+  const handleAddPortfolio = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const targetUser = managingUser || user;
+    if (!targetUser) return;
+    const formData = new FormData(e.currentTarget);
+    const newItem = {
+      user_id: targetUser.id,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      image_url: formData.get("image_url"),
+      link_url: formData.get("link_url"),
+    };
+
+    const res = await fetch("/api/portfolio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newItem),
+    });
+
+    if (res.ok) {
+      fetchPortfolio(targetUser.id);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeletePortfolio = async (id: number) => {
+    if (!confirm("Delete this portfolio item?")) return;
+    const res = await fetch(`/api/portfolio/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setPortfolioItems(portfolio.filter(p => p.id !== id));
+    }
+  };
+
+  const handleAddAsset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const targetUser = managingUser || user;
+    if (!targetUser) return;
+    const formData = new FormData(e.currentTarget);
+    const newAsset = {
+      user_id: targetUser.id,
+      type: formData.get("type"),
+      title: formData.get("title"),
+      url: formData.get("url"),
+    };
+
+    const res = await fetch("/api/assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAsset),
+    });
+
+    if (res.ok) {
+      fetchAssets(targetUser.id);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeleteAsset = async (id: number) => {
+    if (!confirm("Delete this document?")) return;
+    const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAssets(assets.filter(a => a.id !== id));
+    }
+  };
+
+  const handleAddAppointment = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const targetUser = managingUser || user;
+    if (!targetUser) return;
+    const formData = new FormData(e.currentTarget);
+    const newAppt = {
+      user_id: targetUser.id,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      date: formData.get("date"),
+      time: formData.get("time"),
+      duration: parseInt(formData.get("duration") as string),
+    };
+
+    const res = await fetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAppt),
+    });
+
+    if (res.ok) {
+      fetchAppointments(targetUser.id);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeleteAppointment = async (id: number) => {
+    if (!confirm("Delete this appointment?")) return;
+    const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAppointments(appointments.filter(a => a.id !== id));
+    }
+  };
+
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'background' | 'link-icon') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -401,6 +528,9 @@ export function AdminDashboard() {
 
   const navItems = [
     { id: "links", label: "Links", icon: LinkIcon, group: "Personal" },
+    { id: "portfolio", label: "Portfolio", icon: Briefcase, group: "Personal" },
+    { id: "assets", label: "Documents", icon: FolderOpen, group: "Personal" },
+    { id: "appointments", label: "Appointments", icon: Calendar, group: "Personal" },
     { id: "appearance", label: "Appearance", icon: Layout, group: "Personal" },
     { id: "analytics", label: "Analytics", icon: BarChart3, group: "Personal" },
     { id: "leads", label: "Leads", icon: MessageSquare, group: "Personal" },

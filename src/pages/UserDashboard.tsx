@@ -6,7 +6,8 @@ import {
   Copy, Check, Image as ImageIcon, Upload, Code, Menu, X, Bell,
   Instagram, Twitter, Facebook, Linkedin, Github, Youtube, Mail, Phone,
   MessageCircle, Camera, MapPin, Briefcase, Search, Globe, TrendingUp,
-  Music as MusicIcon, ShoppingBag, Video
+  Music as MusicIcon, ShoppingBag, Video, FileText, Calendar, FolderOpen,
+  Music, Image, File
 } from "lucide-react";
 import { Link, User, Profile } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,7 +32,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type TabType = "links" | "appearance" | "analytics" | "qrcode" | "leads";
+type TabType = "links" | "appearance" | "analytics" | "qrcode" | "leads" | "portfolio" | "appointments" | "assets";
 
 const SortableLinkItem = ({ 
   link, 
@@ -94,6 +95,9 @@ export function UserDashboard() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [analytics, setAnalytics] = useState<{ views: number; clicks: number; recentViews: any[] } | null>(null);
   const [leads, setLeads] = useState<any[]>([]);
+  const [portfolio, setPortfolioItems] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -140,6 +144,18 @@ export function UserDashboard() {
       const leadsRes = await fetch(`/api/admin/leads/${userId}`);
       const leadsData = await leadsRes.json();
       setLeads(leadsData);
+
+      const portfolioRes = await fetch(`/api/portfolio/${userId}`);
+      const portfolioData = await portfolioRes.json();
+      setPortfolioItems(portfolioData);
+
+      const appointmentsRes = await fetch(`/api/appointments/${userId}`);
+      const appointmentsData = await appointmentsRes.json();
+      setAppointments(appointmentsData);
+
+      const assetsRes = await fetch(`/api/assets/${userId}`);
+      const assetsData = await assetsRes.json();
+      setAssets(assetsData);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -211,6 +227,99 @@ export function UserDashboard() {
     }
   };
 
+  const handleAddPortfolio = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newItem = {
+      user_id: user?.id,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      image_url: formData.get("image_url"),
+      link_url: formData.get("link_url"),
+    };
+
+    const res = await fetch("/api/portfolio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newItem),
+    });
+
+    if (res.ok) {
+      fetchData(user!.id, user!.username);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeletePortfolio = async (id: number) => {
+    if (!confirm("Delete this portfolio item?")) return;
+    const res = await fetch(`/api/portfolio/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setPortfolioItems(portfolio.filter(p => p.id !== id));
+    }
+  };
+
+  const handleAddAsset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newAsset = {
+      user_id: user?.id,
+      type: formData.get("type"),
+      title: formData.get("title"),
+      url: formData.get("url"),
+    };
+
+    const res = await fetch("/api/assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAsset),
+    });
+
+    if (res.ok) {
+      fetchData(user!.id, user!.username);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeleteAsset = async (id: number) => {
+    if (!confirm("Delete this document?")) return;
+    const res = await fetch(`/api/assets/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAssets(assets.filter(a => a.id !== id));
+    }
+  };
+
+  const handleAddAppointment = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const newAppt = {
+      user_id: user?.id,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      date: formData.get("date"),
+      time: formData.get("time"),
+      duration: parseInt(formData.get("duration") as string),
+    };
+
+    const res = await fetch("/api/appointments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newAppt),
+    });
+
+    if (res.ok) {
+      fetchData(user!.id, user!.username);
+      (e.target as HTMLFormElement).reset();
+    }
+  };
+
+  const handleDeleteAppointment = async (id: number) => {
+    if (!confirm("Delete this appointment?")) return;
+    const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAppointments(appointments.filter(a => a.id !== id));
+    }
+  };
+
   const copyToClipboard = () => {
     const url = `${window.location.origin}/u/${user?.username}`;
     navigator.clipboard.writeText(url);
@@ -231,6 +340,9 @@ export function UserDashboard() {
 
   const navItems = [
     { id: "links", label: "Links", icon: LinkIcon, group: "Personal" },
+    { id: "portfolio", label: "Portfolio", icon: Briefcase, group: "Personal" },
+    { id: "assets", label: "Documents", icon: FolderOpen, group: "Personal" },
+    { id: "appointments", label: "Appointments", icon: Calendar, group: "Personal" },
     { id: "appearance", label: "Appearance", icon: Layout, group: "Personal" },
     { id: "analytics", label: "Analytics", icon: BarChart3, group: "Personal" },
     { id: "leads", label: "Leads", icon: MessageSquare, group: "Personal" },
@@ -717,6 +829,191 @@ export function UserDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === "portfolio" && (
+              <div className="space-y-12">
+                <div className="bg-white/5 p-10 rounded-[3rem] border border-white/5">
+                  <h3 className="text-xl font-bold mb-8 flex items-center space-x-3">
+                    <Briefcase className="text-gold" size={20} />
+                    <span>Add Portfolio Project</span>
+                  </h3>
+                  <form onSubmit={handleAddPortfolio} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Project Title</label>
+                        <input name="title" placeholder="Project Name" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Project Link (Optional)</label>
+                        <input name="link_url" placeholder="https://..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Description</label>
+                      <textarea name="description" placeholder="Describe your work..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all h-24 resize-none" required />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Image URL</label>
+                      <input name="image_url" placeholder="https://..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                    </div>
+                    <button type="submit" className="w-full btn-primary py-5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                      Add to Portfolio
+                    </button>
+                  </form>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {portfolio.map((item) => (
+                    <div key={item.id} className="bg-white/5 rounded-[2.5rem] border border-white/5 overflow-hidden group hover:border-gold/30 transition-all">
+                      <div className="aspect-video relative overflow-hidden">
+                        <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                        <button onClick={() => handleDeletePortfolio(item.id)} className="absolute top-4 right-4 p-3 bg-red-500 text-white rounded-2xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      <div className="p-8">
+                        <h4 className="text-xl font-bold mb-2">{item.title}</h4>
+                        <p className="text-sm text-light/40 mb-6 line-clamp-2">{item.description}</p>
+                        {item.link_url && (
+                          <a href={item.link_url} target="_blank" className="inline-flex items-center space-x-2 text-gold font-bold text-xs uppercase tracking-widest hover:underline">
+                            <span>View Project</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "assets" && (
+              <div className="space-y-12">
+                <div className="bg-white/5 p-10 rounded-[3rem] border border-white/5">
+                  <h3 className="text-xl font-bold mb-8 flex items-center space-x-3">
+                    <FolderOpen className="text-gold" size={20} />
+                    <span>Store Document or Media</span>
+                  </h3>
+                  <form onSubmit={handleAddAsset} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Document Title</label>
+                        <input name="title" placeholder="e.g. My CV" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Type</label>
+                        <select name="type" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all appearance-none">
+                          <option value="cv">CV / Resume</option>
+                          <option value="document">Key Document</option>
+                          <option value="picture">Picture / Photo</option>
+                          <option value="music">Music / Audio</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">File URL</label>
+                      <input name="url" placeholder="https://..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                    </div>
+                    <button type="submit" className="w-full btn-primary py-5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                      Save to Vault
+                    </button>
+                  </form>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {assets.map((asset) => (
+                    <div key={asset.id} className="bg-white/5 p-6 rounded-[2rem] border border-white/5 hover:bg-white/10 transition-all group">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="w-12 h-12 bg-gold/10 rounded-2xl flex items-center justify-center text-gold">
+                          {asset.type === 'cv' && <FileText size={24} />}
+                          {asset.type === 'document' && <File size={24} />}
+                          {asset.type === 'picture' && <Image size={24} />}
+                          {asset.type === 'music' && <Music size={24} />}
+                        </div>
+                        <button onClick={() => handleDeleteAsset(asset.id)} className="p-2 text-red-500/40 hover:text-red-500 transition-colors">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      <h4 className="font-bold mb-1 truncate">{asset.title}</h4>
+                      <p className="text-[10px] text-light/20 uppercase font-black tracking-widest mb-4">{asset.type}</p>
+                      <a href={asset.url} target="_blank" className="w-full py-3 bg-white/5 hover:bg-gold hover:text-dark rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center space-x-2">
+                        <ExternalLink size={12} />
+                        <span>Access File</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "appointments" && (
+              <div className="space-y-12">
+                <div className="bg-white/5 p-10 rounded-[3rem] border border-white/5">
+                  <h3 className="text-xl font-bold mb-8 flex items-center space-x-3">
+                    <Calendar className="text-gold" size={20} />
+                    <span>Schedule Appointment Slot</span>
+                  </h3>
+                  <form onSubmit={handleAddAppointment} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Title</label>
+                        <input name="title" placeholder="e.g. Consultation" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Duration (minutes)</label>
+                        <input name="duration" type="number" defaultValue="30" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Date</label>
+                        <input name="date" type="date" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Time</label>
+                        <input name="time" type="time" className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all" required />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-light/20 ml-2">Description</label>
+                      <textarea name="description" placeholder="Details about this slot..." className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 outline-none focus:border-gold transition-all h-24 resize-none" />
+                    </div>
+                    <button type="submit" className="w-full btn-primary py-5 rounded-2xl font-black uppercase tracking-widest text-xs">
+                      Open Appointment Slot
+                    </button>
+                  </form>
+                </div>
+
+                <div className="space-y-4">
+                  {appointments.map((appt) => (
+                    <div key={appt.id} className="bg-white/5 p-8 rounded-[2.5rem] border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 group hover:border-gold/20 transition-all">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-gold/10 rounded-[1.5rem] flex flex-col items-center justify-center text-gold">
+                          <span className="text-[10px] font-black uppercase">{new Date(appt.date).toLocaleString('default', { month: 'short' })}</span>
+                          <span className="text-2xl font-bold leading-none">{new Date(appt.date).getDate()}</span>
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-bold mb-1">{appt.title}</h4>
+                          <div className="flex items-center space-x-4 text-xs text-light/40">
+                            <span className="flex items-center space-x-1">
+                              <Clock size={12} />
+                              <span>{appt.time} ({appt.duration}m)</span>
+                            </span>
+                            <span className="px-2 py-0.5 bg-green-500/10 text-green-500 rounded-full text-[8px] font-black uppercase tracking-widest">
+                              {appt.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button onClick={() => handleDeleteAppointment(appt.id)} className="p-4 bg-red-500/10 text-red-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-all">
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

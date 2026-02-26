@@ -5,7 +5,7 @@ import {
   ExternalLink, Globe, Instagram, Twitter, Linkedin, Github, Youtube, 
   Send, Music, Share2, Facebook, MessageCircle, Copy, Check, X,
   ChevronLeft, ChevronRight, ShoppingBag, Mail, Phone, Camera,
-  MapPin, Briefcase, Video
+  MapPin, Briefcase, Video, FileText, Calendar, FolderOpen, Image, File
 } from "lucide-react";
 import { Link, Profile, Product } from "../types";
 import { cn } from "../lib/utils";
@@ -31,7 +31,13 @@ const iconMap: Record<string, any> = {
 
 export function UserPage() {
   const { username } = useParams();
-  const [data, setData] = useState<{ profile: Profile; links: Link[] } | null>(null);
+  const [data, setData] = useState<{ 
+    profile: Profile; 
+    links: Link[];
+    portfolio: any[];
+    assets: any[];
+    appointments: any[];
+  } | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -43,13 +49,40 @@ export function UserPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/profile/${username}`)
-      .then((res) => res.json())
-      .then((res) => {
-        setData(res);
+    const fetchProfileData = async () => {
+      try {
+        const res = await fetch(`/api/profile/${username}`);
+        const profileData = await res.json();
+        
+        if (profileData.profile) {
+          const userId = profileData.profile.user_id;
+          
+          // Fetch additional data
+          const [portfolioRes, assetsRes, appointmentsRes] = await Promise.all([
+            fetch(`/api/portfolio/${userId}`),
+            fetch(`/api/assets/${userId}`),
+            fetch(`/api/appointments/${userId}`)
+          ]);
+          
+          const portfolio = await portfolioRes.json();
+          const assets = await assetsRes.json();
+          const appointments = await appointmentsRes.json();
+          
+          setData({
+            ...profileData,
+            portfolio,
+            assets,
+            appointments
+          });
+        }
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
 
     fetch("/api/products")
       .then((res) => res.json())
@@ -132,7 +165,7 @@ export function UserPage() {
     );
   }
 
-  const { profile, links } = data;
+  const { profile, links, portfolio, assets, appointments } = data;
   const pageUrl = window.location.href;
 
   const themes: Record<string, string> = {
@@ -280,6 +313,111 @@ export function UserPage() {
             );
           })}
         </div>
+
+        {/* Portfolio Section */}
+        {portfolio && portfolio.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 text-left"
+          >
+            <h3 className="text-lg font-bold mb-6 flex items-center space-x-2">
+              <Briefcase size={18} className="text-gold" />
+              <span>Featured Work</span>
+            </h3>
+            <div className="grid grid-cols-1 gap-6">
+              {portfolio.map((item) => (
+                <div key={item.id} className="glass rounded-2xl overflow-hidden group">
+                  <div className="aspect-video relative overflow-hidden">
+                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                  </div>
+                  <div className="p-6">
+                    <h4 className="font-bold text-lg mb-1">{item.title}</h4>
+                    <p className="text-xs opacity-60 mb-4 line-clamp-2">{item.description}</p>
+                    {item.link_url && (
+                      <a href={item.link_url} target="_blank" className="inline-flex items-center space-x-2 text-gold font-bold text-[10px] uppercase tracking-widest hover:underline">
+                        <span>View Project</span>
+                        <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Documents Section */}
+        {assets && assets.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 text-left"
+          >
+            <h3 className="text-lg font-bold mb-6 flex items-center space-x-2">
+              <FolderOpen size={18} className="text-gold" />
+              <span>Documents & Media</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {assets.map((asset) => (
+                <a 
+                  key={asset.id} 
+                  href={asset.url} 
+                  target="_blank" 
+                  className="glass p-4 rounded-xl flex items-center space-x-3 hover:bg-white/10 transition-all border border-white/5"
+                >
+                  <div className="w-10 h-10 bg-gold/10 rounded-lg flex items-center justify-center text-gold">
+                    {asset.type === 'cv' && <FileText size={20} />}
+                    {asset.type === 'document' && <File size={20} />}
+                    {asset.type === 'picture' && <Image size={20} />}
+                    {asset.type === 'music' && <Music size={20} />}
+                  </div>
+                  <div className="flex-grow min-w-0">
+                    <p className="text-xs font-bold truncate">{asset.title}</p>
+                    <p className="text-[8px] opacity-40 uppercase font-black tracking-widest">{asset.type}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Appointments Section */}
+        {appointments && appointments.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-12 text-left"
+          >
+            <h3 className="text-lg font-bold mb-6 flex items-center space-x-2">
+              <Calendar size={18} className="text-gold" />
+              <span>Available Slots</span>
+            </h3>
+            <div className="space-y-3">
+              {appointments.map((appt) => (
+                <div key={appt.id} className="glass p-4 rounded-xl flex items-center justify-between border border-white/5">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-gold/10 rounded-lg flex flex-col items-center justify-center text-gold">
+                      <span className="text-[8px] font-black uppercase">{new Date(appt.date).toLocaleString('default', { month: 'short' })}</span>
+                      <span className="text-lg font-bold leading-none">{new Date(appt.date).getDate()}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold">{appt.title}</h4>
+                      <p className="text-[10px] opacity-40">{appt.time} • {appt.duration}m</p>
+                    </div>
+                  </div>
+                  <button className="px-4 py-2 bg-gold text-dark text-[10px] font-black uppercase tracking-widest rounded-lg hover:scale-105 transition-transform shadow-lg shadow-gold/20">
+                    Book
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Contact Form */}
         {profile.enable_contact_form === 1 && (
