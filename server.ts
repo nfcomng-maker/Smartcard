@@ -23,8 +23,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
+    email TEXT UNIQUE,
     password TEXT,
     role TEXT DEFAULT 'user', -- 'admin' or 'user'
+    reset_token TEXT,
+    reset_expires DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -216,6 +219,27 @@ async function startServer() {
     }
   });
 
+  app.patch("/api/admin/users/:id", (req, res) => {
+    const { role, password } = req.body;
+    if (password) {
+      db.prepare("UPDATE users SET role = ?, password = ? WHERE id = ?").run(role, password, req.params.id);
+    } else {
+      db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, req.params.id);
+    }
+    res.json({ success: true });
+  });
+
+  app.delete("/api/admin/users/:id", (req, res) => {
+    const userId = req.params.id;
+    // Delete user and all associated data
+    db.prepare("DELETE FROM links WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM profile WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM analytics WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM leads WHERE user_id = ?").run(userId);
+    db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+    res.json({ success: true });
+  });
+
   app.get("/api/admin/stats", (req, res) => {
     const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
     const orderCount = db.prepare("SELECT COUNT(*) as count FROM orders").get() as { count: number };
@@ -253,14 +277,14 @@ async function startServer() {
   });
 
   app.post("/api/signup", (req, res) => {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
     try {
-      const result = db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)")
-        .run(username, password, 'user');
+      const result = db.prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)")
+        .run(username, email || null, password, 'user');
       
       // Create initial profile
       db.prepare("INSERT INTO profile (user_id, name, bio) VALUES (?, ?, ?)")
@@ -285,6 +309,37 @@ async function startServer() {
     } else {
       res.status(401).json({ success: false, error: "Invalid credentials" });
     }
+  });
+
+  app.post("/api/forgot-password", (req, res) => {
+    const { email } = req.body;
+    const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any;
+    
+    if (!user) {
+      return res.status(404).json({ error: "No user found with this email" });
+    }
+
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const expires = new Date(Date.now() + 3600000).toISOString(); // 1 hour
+
+    db.prepare("UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?").run(token, expires, user.id);
+
+    // In a real app, send email here. For now, we'll just return the token for demo purposes.
+    console.log(`Password reset token for ${email}: ${token}`);
+    
+    res.json({ success: true, message: "Reset link sent to your email", token }); 
+  });
+
+  app.post("/api/reset-password", (req, res) => {
+    const { token, password } = req.body;
+    const user = db.prepare("SELECT * FROM users WHERE reset_token = ? AND reset_expires > ?").get(token, new Date().toISOString()) as any;
+
+    if (!user) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+
+    db.prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?").run(password, user.id);
+    res.json({ success: true, message: "Password updated successfully" });
   });
 
   // OAuth Routes

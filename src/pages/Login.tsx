@@ -1,12 +1,14 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Smartphone, Lock, User, Chrome, Facebook } from "lucide-react";
+import { Smartphone, Lock, User, Chrome, Facebook, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,18 +29,26 @@ export function Login() {
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      localStorage.setItem("user", JSON.stringify(data.user));
-      const role = data.user.role;
-      navigate(role === 'admin' ? "/admin" : "/dashboard");
-    } else {
-      setError(data.error);
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        const role = data.user.role;
+        navigate(role === 'admin' ? "/admin" : "/dashboard");
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError("Login failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -123,26 +133,38 @@ export function Login() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-light/40 mb-2">
-              Password
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-light/40">
+                Password
+              </label>
+              <Link to="/forgot-password" title="Forgot Password?" className="text-[10px] text-gold hover:underline">
+                Forgot Password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-light/20 w-5 h-5" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 focus:border-gold outline-none transition-colors"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-12 focus:border-gold outline-none transition-colors"
                 placeholder="••••••••"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-light/20 hover:text-light transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
           {error && <p className="text-red-500 text-xs text-center">{error}</p>}
 
-          <button type="submit" className="w-full btn-primary py-4">
-            Sign In
+          <button type="submit" disabled={loading} className="w-full btn-primary py-4 disabled:opacity-50">
+            {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
 

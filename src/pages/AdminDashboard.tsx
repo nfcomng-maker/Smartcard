@@ -7,7 +7,7 @@ import {
   TrendingUp, Clock, Package, UserPlus, Zap, ExternalLink, Copy, Check,
   Image as ImageIcon, Upload, Code, Menu, X, ChevronRight, Bell,
   Instagram, Twitter, Facebook, Linkedin, Github, Youtube, Mail, Phone,
-  MessageCircle, Camera, MapPin, Briefcase, Search
+  MessageCircle, Camera, MapPin, Briefcase, Search, ArrowLeft
 } from "lucide-react";
 import { Link, User, Profile, SiteSettings, Product, Order } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -136,6 +136,7 @@ export function AdminDashboard() {
     return <IconComp size={20} />;
   };
   const [newUser, setNewUser] = useState({ username: "", password: "", role: "user" });
+  const [managingUser, setManagingUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -169,6 +170,8 @@ export function AdminDashboard() {
             links: updatedLinks.map(l => ({ id: l.id, order_index: l.order_index }))
           })
         });
+        const targetUser = managingUser || user;
+        if (targetUser) fetchLinks(targetUser.id);
       } catch (error) {
         console.error("Failed to save link order:", error);
       }
@@ -211,6 +214,21 @@ export function AdminDashboard() {
       fetchProducts();
     }
   }, [navigate]);
+
+  useEffect(() => {
+    if (managingUser) {
+      fetchLinks(managingUser.id);
+      fetchProfile(managingUser.username);
+      fetchAnalytics(managingUser.id);
+      fetchLeads(managingUser.id);
+      setActiveTab("links");
+    } else if (user) {
+      fetchLinks(user.id);
+      fetchProfile(user.username);
+      fetchAnalytics(user.id);
+      fetchLeads(user.id);
+    }
+  }, [managingUser]);
 
   const fetchLinks = async (userId: number) => {
     const res = await fetch(`/api/admin/links/${userId}`);
@@ -262,14 +280,15 @@ export function AdminDashboard() {
 
   const handleAddLink = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    const targetUser = managingUser || user;
+    if (!targetUser) return;
     await fetch("/api/admin/links", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...newLink, user_id: user.id }),
+      body: JSON.stringify({ ...newLink, user_id: targetUser.id }),
     });
     setNewLink({ title: "", url: "", icon: "Globe" });
-    fetchLinks(user.id);
+    fetchLinks(targetUser.id);
   };
 
   const handleCreateUser = async (e: FormEvent) => {
@@ -290,6 +309,15 @@ export function AdminDashboard() {
     }
   };
 
+  const handleDeleteUser = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this user and all their data? This action cannot be undone.")) return;
+    const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setUsers(users.filter(u => u.id !== id));
+      fetchStats();
+    }
+  };
+
   const handleUpdateSettings = async (e: FormEvent) => {
     e.preventDefault();
     await fetch("/api/admin/site-settings", {
@@ -303,16 +331,18 @@ export function AdminDashboard() {
   const handleDeleteLink = async (id: number) => {
     if (!confirm("Are you sure?")) return;
     await fetch(`/api/admin/links/${id}`, { method: "DELETE" });
-    if (user) fetchLinks(user.id);
+    const targetUser = managingUser || user;
+    if (targetUser) fetchLinks(targetUser.id);
   };
 
   const handleUpdateProfile = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user || !profile) return;
+    const targetUser = managingUser || user;
+    if (!targetUser || !profile) return;
     await fetch("/api/admin/profile", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...profile, user_id: user.id }),
+      body: JSON.stringify({ ...profile, user_id: targetUser.id }),
     });
     alert("Profile updated!");
   };
@@ -343,7 +373,7 @@ export function AdminDashboard() {
     navigate("/login");
   };
 
-  const userPageUrl = `${window.location.origin}/u/${user?.username}`;
+  const userPageUrl = `${window.location.origin}/u/${managingUser?.username || user?.username}`;
 
   const isAdmin = user?.role === 'admin';
 
@@ -540,6 +570,15 @@ export function AdminDashboard() {
             </div>
 
             <div className="flex items-center space-x-3">
+              {managingUser && (
+                <button
+                  onClick={() => setManagingUser(null)}
+                  className="flex items-center space-x-3 px-8 py-5 bg-white/5 text-gold border border-gold/30 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all hover:bg-gold hover:text-dark"
+                >
+                  <ArrowLeft size={14} />
+                  <span>Back to Admin</span>
+                </button>
+              )}
               <a
                 href={userPageUrl}
                 target="_blank"
@@ -1145,14 +1184,31 @@ export function AdminDashboard() {
                               </div>
                             </td>
                             <td className="p-8">
-                              <a 
-                                href={`/u/${u.username}`} 
-                                target="_blank" 
-                                className="inline-flex items-center space-x-2 bg-white/5 hover:bg-gold hover:text-dark px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
-                              >
-                                <span>Live Profile</span>
-                                <ExternalLink size={12} />
-                              </a>
+                              <div className="flex items-center space-x-3">
+                                <a 
+                                  href={`/u/${u.username}`} 
+                                  target="_blank" 
+                                  className="inline-flex items-center space-x-2 bg-white/5 hover:bg-gold hover:text-dark px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                >
+                                  <span>Live Profile</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                                <button 
+                                  onClick={() => setManagingUser(u)}
+                                  className="inline-flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                >
+                                  <Settings size={12} />
+                                  <span>Manage Page</span>
+                                </button>
+                                {u.id !== user?.id && (
+                                  <button 
+                                    onClick={() => handleDeleteUser(u.id)}
+                                    className="p-2.5 text-red-500/40 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
