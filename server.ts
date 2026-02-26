@@ -160,8 +160,9 @@ if (settingsCount.count === 0) {
   defaultSettings.forEach(s => insertSetting.run(s.key, s.value));
 }
 
-async function startServer() {
-  const app = express();
+export const app = express();
+
+export async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: '50mb' }));
@@ -523,10 +524,13 @@ async function startServer() {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
     });
   }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
 }
 
-startServer();
+if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
+  startServer().then(() => {
+    const PORT = 3000;
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  });
+}
