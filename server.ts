@@ -221,11 +221,13 @@ export async function startServer() {
   });
 
   app.patch("/api/admin/users/:id", (req, res) => {
-    const { role, password } = req.body;
+    const { username, role, password } = req.body;
+    const userId = req.params.id;
+    
     if (password) {
-      db.prepare("UPDATE users SET role = ?, password = ? WHERE id = ?").run(role, password, req.params.id);
+      db.prepare("UPDATE users SET username = ?, role = ?, password = ? WHERE id = ?").run(username, role, password, userId);
     } else {
-      db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, req.params.id);
+      db.prepare("UPDATE users SET username = ?, role = ? WHERE id = ?").run(username, role, userId);
     }
     res.json({ success: true });
   });

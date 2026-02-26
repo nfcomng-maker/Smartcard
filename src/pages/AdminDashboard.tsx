@@ -136,6 +136,8 @@ export function AdminDashboard() {
     return <IconComp size={20} />;
   };
   const [newUser, setNewUser] = useState({ username: "", password: "", role: "user" });
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editUserForm, setEditUserForm] = useState({ username: "", role: "", password: "" });
   const [managingUser, setManagingUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("links");
   const sensors = useSensors(
@@ -318,6 +320,21 @@ export function AdminDashboard() {
     }
   };
 
+  const handleUpdateUser = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editUserForm),
+    });
+    if (res.ok) {
+      setEditingUser(null);
+      fetchUsers();
+      alert("User updated successfully!");
+    }
+  };
+
   const handleUpdateSettings = async (e: FormEvent) => {
     e.preventDefault();
     await fetch("/api/admin/site-settings", {
@@ -438,6 +455,27 @@ export function AdminDashboard() {
             <span className="text-[10px] text-gold font-bold uppercase tracking-widest opacity-50">Dashboard</span>
           </div>
         </div>
+
+        {managingUser && (
+          <div className="mb-8 p-5 bg-gold/10 rounded-[2rem] border border-gold/20 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-gold/5 blur-2xl -mr-10 -mt-10" />
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-gold flex items-center justify-center text-dark font-bold text-xs">
+                {managingUser.username[0].toUpperCase()}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-gold truncate max-w-[120px]">{managingUser.username}</span>
+                <span className="text-[8px] text-gold/60 uppercase font-black tracking-widest">Managing User</span>
+              </div>
+            </div>
+            <button 
+              onClick={() => setManagingUser(null)}
+              className="w-full py-2 bg-gold text-dark rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+            >
+              Exit Manager
+            </button>
+          </div>
+        )}
 
         {/* Quick Access Panel */}
         <div className="mb-8 p-5 bg-white/5 rounded-[2rem] border border-white/5 relative overflow-hidden group">
@@ -761,7 +799,7 @@ export function AdminDashboard() {
                     <div className="flex items-center space-x-6 bg-white/5 p-4 rounded-[2rem] border border-white/5">
                       <div className="relative group">
                         <img 
-                          src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
+                          src={profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${managingUser?.username || user?.username}`} 
                           className="w-20 h-20 rounded-[1.5rem] border-2 border-gold/20 object-cover group-hover:border-gold transition-all shadow-xl shadow-gold/5" 
                           alt="Avatar" 
                         />
@@ -930,7 +968,7 @@ export function AdminDashboard() {
 
             {activeTab === "analytics" && (
               <div className="space-y-12">
-                {isAdmin && stats ? (
+                {isAdmin && !managingUser && stats ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {[
                       { label: "Total Users", value: stats.userCount, icon: Users, trend: "+12%", color: "text-gold" },
@@ -1194,11 +1232,21 @@ export function AdminDashboard() {
                                   <ExternalLink size={12} />
                                 </a>
                                 <button 
-                                  onClick={() => setManagingUser(u)}
+                                  onClick={() => {
+                                    setEditingUser(u);
+                                    setEditUserForm({ username: u.username, role: u.role || 'user', password: "" });
+                                  }}
                                   className="inline-flex items-center space-x-2 bg-white/5 hover:bg-white/10 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
                                 >
                                   <Settings size={12} />
-                                  <span>Manage Page</span>
+                                  <span>Edit Account</span>
+                                </button>
+                                <button 
+                                  onClick={() => setManagingUser(u)}
+                                  className="inline-flex items-center space-x-2 bg-gold/10 text-gold hover:bg-gold hover:text-dark px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                >
+                                  <Layout size={12} />
+                                  <span>Manage Content</span>
                                 </button>
                                 {u.id !== user?.id && (
                                   <button 
@@ -1429,12 +1477,12 @@ export function AdminDashboard() {
                 <div className="h-full overflow-y-auto custom-scrollbar p-6 pt-12 space-y-8">
                   <div className="text-center space-y-4">
                     <img 
-                      src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} 
+                      src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${managingUser?.username || user?.username}`} 
                       className="w-24 h-24 rounded-[2rem] mx-auto border-2 border-gold shadow-2xl" 
                       alt="" 
                     />
                     <div>
-                      <h2 className="text-2xl font-bold tracking-tight">{profile?.name || user?.username}</h2>
+                      <h2 className="text-2xl font-bold tracking-tight">{profile?.name || managingUser?.username || user?.username}</h2>
                       <p className="text-[10px] text-light/40 mt-1">{profile?.bio || "No bio set yet..."}</p>
                     </div>
                   </div>
@@ -1477,6 +1525,91 @@ export function AdminDashboard() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Edit User Modal */}
+      <AnimatePresence>
+        {editingUser && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingUser(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-[#0A0A0A] border border-white/10 rounded-[3rem] p-10 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 blur-3xl -mr-16 -mt-16" />
+              
+              <div className="flex items-center justify-between mb-10">
+                <h3 className="text-2xl font-bold tracking-tight">Edit User Account</h3>
+                <button 
+                  onClick={() => setEditingUser(null)}
+                  className="p-2 hover:bg-white/5 rounded-full transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateUser} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-light/20 uppercase tracking-widest ml-1">Username</label>
+                  <input
+                    type="text"
+                    value={editUserForm.username}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, username: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 outline-none focus:border-gold transition-all font-bold"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-light/20 uppercase tracking-widest ml-1">New Password (leave blank to keep current)</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={editUserForm.password}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, password: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 outline-none focus:border-gold transition-all font-bold"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-light/20 uppercase tracking-widest ml-1">Account Role</label>
+                  <select
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 outline-none focus:border-gold transition-all appearance-none font-bold"
+                  >
+                    <option value="user">Standard User</option>
+                    <option value="admin">Administrator</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 flex space-x-4">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="flex-1 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs bg-white/5 hover:bg-white/10 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="flex-1 bg-gold text-dark py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-gold/20 hover:scale-[1.02] transition-transform"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0A0A0A]/80 backdrop-blur-xl border-t border-white/5 p-4 flex justify-around items-center z-[100]">
