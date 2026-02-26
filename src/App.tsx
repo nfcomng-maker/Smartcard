@@ -7,6 +7,7 @@ import { Blog } from "./pages/Blog";
 import { Contact } from "./pages/Contact";
 import { UserPage } from "./pages/UserPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
+import { UserDashboard } from "./pages/UserDashboard";
 import { Login } from "./pages/Login";
 import { Signup } from "./pages/Signup";
 import { Navbar } from "./components/Navbar";
@@ -129,6 +130,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard" element={<UserDashboard />} />
           </Routes>
           <AIChatbot />
         </div>

@@ -17,7 +17,8 @@ export function Login() {
       }
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         localStorage.setItem("user", JSON.stringify(event.data.user));
-        navigate("/admin");
+        const role = event.data.user.role;
+        navigate(role === 'admin' ? "/admin" : "/dashboard");
       }
     };
     window.addEventListener('message', handleMessage);
@@ -34,7 +35,8 @@ export function Login() {
     const data = await res.json();
     if (data.success) {
       localStorage.setItem("user", JSON.stringify(data.user));
-      navigate("/admin");
+      const role = data.user.role;
+      navigate(role === 'admin' ? "/admin" : "/dashboard");
     } else {
       setError(data.error);
     }

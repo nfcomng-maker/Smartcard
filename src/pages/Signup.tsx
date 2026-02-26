@@ -30,7 +30,7 @@ export function Signup() {
       const data = await res.json();
       if (data.success) {
         localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/admin");
+        navigate("/dashboard");
       } else {
         setError(data.error);
       }

@@ -193,6 +193,11 @@ export function AdminDashboard() {
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
     
+    if (parsedUser.role !== 'admin') {
+      navigate("/dashboard");
+      return;
+    }
+    
     // Initial data fetch
     fetchLinks(parsedUser.id);
     fetchProfile(parsedUser.username);

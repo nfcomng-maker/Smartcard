@@ -266,7 +266,7 @@ async function startServer() {
       db.prepare("INSERT INTO profile (user_id, name, bio) VALUES (?, ?, ?)")
         .run(result.lastInsertRowid, username, `Hi, I'm ${username}!`);
         
-      res.json({ success: true, user: { id: result.lastInsertRowid, username } });
+      res.json({ success: true, user: { id: result.lastInsertRowid, username, role: 'user' } });
     } catch (error: any) {
       if (error.message.includes("UNIQUE constraint failed")) {
         res.status(400).json({ error: "Username already exists" });
@@ -281,7 +281,7 @@ async function startServer() {
     const user = db.prepare("SELECT * FROM users WHERE username = ? AND password = ?").get(username, password) as any;
     
     if (user) {
-      res.json({ success: true, user: { id: user.id, username: user.username } });
+      res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
     } else {
       res.status(401).json({ success: false, error: "Invalid credentials" });
     }
